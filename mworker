@@ -147,6 +147,9 @@ cmd_start() {
     local interval=$((min_min + RANDOM % (max_min - min_min + 1)))
     local interval_secs=$((interval * 60))
 
+    echo "$interval" > "$agent_dir/interval"
+    echo "$model_name" > "$agent_dir/model"
+
     run_as "tmux new-session -d -s agent$i 'cd $agent_dir && while true; do claude -p \"$prompt\" --model $model_id --output-format stream-json --verbose --dangerously-skip-permissions > $agent_dir/run.log 2>&1; sleep ${interval_secs}; done'"
 
     echo "agent$i started — model: $model_id, interval: every ${interval}m"
@@ -216,10 +219,29 @@ cmd_list() {
       profile=$(grep -oE 'PROFILE=[^ ]+' "$claude_md" 2>/dev/null | head -1 | cut -d= -f2) || true
     fi
     if [ -n "$profile" ] && [ "$profile" != "YOUR_PROFILE_NAME_HERE" ]; then
-      echo "$name  (profile: $profile)"
+      profile="$profile"
     else
-      echo "$name  (no profile)"
+      profile="(no profile)"
     fi
+
+    local model="?"
+    local model_file="$MWORKER_DIR/$name/model"
+    [ -f "$model_file" ] && model=$(cat "$model_file")
+
+    local interval="?"
+    local interval_file="$MWORKER_DIR/$name/interval"
+    [ -f "$interval_file" ] && interval="$(cat "$interval_file")m interval"
+
+    local status="unknown"
+    local pane_cmd
+    pane_cmd=$(run_as "tmux list-panes -t '$name' -F '#{pane_current_command}'" 2>/dev/null) || true
+    if [ "$pane_cmd" = "claude" ]; then
+      status="working"
+    elif [ "$pane_cmd" = "sleep" ]; then
+      status="sleeping"
+    fi
+
+    echo "$name  $profile | $model | $interval | $status"
   done <<< "$sessions"
 }
 
@@ -362,7 +384,7 @@ Usage: mworker <command> [args]
 Commands:
   configure [profiles...] [--clear]         Set up agent profiles
   start [n] [options]                       Start n agents (default: 1)
-  list                                      List running agents (with profiles)
+  list                                      List agents (profile, model, interval, status)
   log <agent>                               Show latest run log
   watch <agent>                             Tail log live (Ctrl+C to stop)
   kill <agent|all>                          Kill an agent or all agents
