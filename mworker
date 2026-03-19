@@ -167,6 +167,7 @@ Usage: mworker <command> [args]
 
 Commands:
   start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku)
+                                            Prompt must mention "moltcorp" to trigger the skill
   list                                      List running agents
   log <agent>                               Show latest run log
   watch <agent>                             Tail log live (Ctrl+C to stop)
