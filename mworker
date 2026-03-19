@@ -1,0 +1,210 @@
+#!/bin/bash
+# mworker — portable CLI to run and manage moltcorp agent workers
+# Install: copy to /usr/local/bin/mworker && chmod +x /usr/local/bin/mworker
+
+set -euo pipefail
+
+# --- Config (override with env vars) ---
+MWORKER_USER="${MWORKER_USER:-$(whoami)}"
+MWORKER_DIR="${MWORKER_DIR:-$HOME/moltcorp}"
+MWORKER_TEMPLATE="${MWORKER_TEMPLATE:-$MWORKER_DIR/CLAUDE.template.md}"
+
+# If running as root, default to "agent" user
+if [ "$(id -u)" -eq 0 ]; then
+  MWORKER_USER="${MWORKER_USER:-agent}"
+  MWORKER_DIR="${MWORKER_DIR:-/home/$MWORKER_USER/moltcorp}"
+fi
+
+run_as() {
+  if [ "$(id -u)" -eq 0 ] && [ "$MWORKER_USER" != "root" ]; then
+    su - "$MWORKER_USER" -c "$1"
+  else
+    bash -c "$1"
+  fi
+}
+
+resolve_model() {
+  case "${1:-haiku}" in
+    sonnet) echo "claude-sonnet-4-6" ;;
+    opus)   echo "claude-opus-4-6" ;;
+    haiku)  echo "claude-haiku-4-5-20251001" ;;
+    *)      echo "$1" ;;
+  esac
+}
+
+# --- Commands ---
+
+cmd_start() {
+  local num="${1:-1}"
+  local model_name="${2:-haiku}"
+  local prompt="${3:-check in and work for moltcorp!}"
+  local min_min="${4:-5}"
+  local max_min="${5:-10}"
+  local model_id
+  model_id=$(resolve_model "$model_name")
+
+  for i in $(seq 1 "$num"); do
+    local agent_dir="$MWORKER_DIR/agent$i"
+    run_as "mkdir -p '$agent_dir'"
+
+    if [ ! -f "$agent_dir/CLAUDE.md" ] && [ -f "$MWORKER_TEMPLATE" ]; then
+      run_as "cp '$MWORKER_TEMPLATE' '$agent_dir/CLAUDE.md'"
+    fi
+
+    # Kill existing session if present
+    if run_as "tmux has-session -t agent$i" 2>/dev/null; then
+      echo "WARNING: agent$i session already exists, killing it"
+      run_as "tmux kill-session -t agent$i"
+      sleep 1
+    fi
+
+    local interval=$((min_min + RANDOM % (max_min - min_min + 1)))
+
+    run_as "tmux new-session -d -s agent$i 'cd $agent_dir && while true; do claude -p \"$prompt\" --model $model_id --output-format stream-json --verbose --dangerously-skip-permissions > $agent_dir/run.log 2>&1; sleep ${interval}m; done'"
+
+    echo "agent$i started — model: $model_id, interval: every ${interval}m"
+  done
+
+  echo ""
+  echo "All $num agent(s) launched. Run 'mworker list' to see them."
+}
+
+cmd_list() {
+  run_as "tmux ls" 2>/dev/null || echo "No agents running."
+}
+
+cmd_watch() {
+  local name="${1:?Usage: mworker watch <agent>}"
+  local logfile="$MWORKER_DIR/$name/run.log"
+  if [ -f "$logfile" ]; then
+    tail -f "$logfile" | jq .
+  else
+    echo "No log file found for $name ($logfile)"
+  fi
+}
+
+cmd_log() {
+  local name="${1:?Usage: mworker log <agent>}"
+  local logfile="$MWORKER_DIR/$name/run.log"
+  if [ -f "$logfile" ]; then
+    jq . "$logfile"
+  else
+    echo "No log file found for $name ($logfile)"
+  fi
+}
+
+cmd_kill() {
+  local name="${1:?Usage: mworker kill <agent|all>}"
+  if [ "$name" = "all" ]; then
+    run_as "tmux kill-server" 2>/dev/null && echo "All agents killed." || echo "No agents running."
+  else
+    run_as "tmux kill-session -t $name" && echo "$name killed." || echo "$name not found."
+  fi
+}
+
+cmd_claim() {
+  local found=0
+  for agentdir in "$MWORKER_DIR"/agent*/; do
+    [ -d "$agentdir" ] || continue
+    local name
+    name=$(basename "$agentdir")
+    local logfile="$agentdir/run.log"
+    [ -f "$logfile" ] || continue
+    local links
+    links=$(grep -oP 'https://moltcorporation\.com/claim/[a-f0-9]+' "$logfile" | sort -u) || true
+    if [ -n "$links" ]; then
+      while IFS= read -r link; do
+        echo "$name: $link"
+        found=1
+      done <<< "$links"
+    fi
+  done
+  if [ "$found" -eq 0 ]; then
+    echo "No claim links found in any agent logs."
+  fi
+}
+
+cmd_server() {
+  if [ "$(uname)" = "Darwin" ]; then
+    local cores
+    cores=$(sysctl -n hw.ncpu)
+    local total_mem
+    total_mem=$(sysctl -n hw.memsize)
+    local total_gb=$((total_mem / 1073741824))
+    local active wired used_mem used_gb mem_pct
+    active=$(vm_stat | awk '/Pages active/ {gsub(/\./,"",$3); print $3}')
+    wired=$(vm_stat | awk '/Pages wired/ {gsub(/\./,"",$3); print $3}')
+    used_mem=$(( (active + wired) * 4096 ))
+    used_gb=$((used_mem / 1073741824))
+    mem_pct=$((used_mem * 100 / total_mem))
+  else
+    local cores
+    cores=$(grep -c ^processor /proc/cpuinfo)
+    local total_gb
+    total_gb=$(awk '/MemTotal/ {printf "%d", $2/1048576}' /proc/meminfo)
+    local used_gb
+    used_gb=$(free -g | awk '/Mem:/ {print $3}')
+    local mem_pct
+    mem_pct=$(free | awk '/Mem:/ {printf "%d", $3*100/$2}')
+  fi
+  local load
+  load=$(uptime | sed 's/.*load average: //' | cut -d, -f1 | xargs)
+  local cpu_pct
+  cpu_pct=$(awk "BEGIN {printf \"%d\", $load * 100 / $cores}")
+  local disk
+  disk=$(df -h / | tail -1 | awk '{print $3"/"$2" ("$5")"}')
+
+  echo "CPU:  ${cpu_pct}% used  (${load} load / ${cores} cores)"
+  echo "Mem:  ${mem_pct}% used  (${used_gb}G / ${total_gb}G)"
+  echo "Disk: ${disk}"
+}
+
+cmd_help() {
+  cat <<'EOF'
+mworker — portable CLI to run and manage moltcorp agent workers
+
+Usage: mworker <command> [args]
+
+Commands:
+  start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku)
+  list                                      List running agents
+  log <agent>                               Show latest run log
+  watch <agent>                             Tail log live (Ctrl+C to stop)
+  kill <agent|all>                          Kill an agent or all agents
+  claim                                     Show unclaimed agent links from logs
+  server                                    Show CPU, memory, disk usage
+  help                                      Show this help
+
+Environment variables:
+  MWORKER_USER      User to run agents as (default: current user, or "agent" if root)
+  MWORKER_DIR       Working directory (default: ~/moltcorp)
+  MWORKER_TEMPLATE  Path to CLAUDE.template.md (default: $MWORKER_DIR/CLAUDE.template.md)
+
+Examples:
+  mworker start                        # 1 haiku agent
+  mworker start 5 sonnet "do work"     # 5 sonnet agents with custom prompt
+  mworker start 3 haiku "work" 2 8     # 3 agents, 2-8 min intervals
+  mworker list
+  mworker log agent1
+  mworker watch agent2
+  mworker kill agent3
+  mworker kill all
+  mworker claim
+
+Install anywhere:
+  sudo cp mworker /usr/local/bin/mworker
+  sudo chmod +x /usr/local/bin/mworker
+EOF
+}
+
+# --- Dispatch ---
+case "${1:-help}" in
+  start)   shift; cmd_start "$@" ;;
+  list|ls) cmd_list ;;
+  watch)   shift; cmd_watch "$@" ;;
+  log)     shift; cmd_log "$@" ;;
+  kill)    shift; cmd_kill "$@" ;;
+  claim)   cmd_claim ;;
+  server)  cmd_server ;;
+  help|*)  cmd_help ;;
+esac
