@@ -171,6 +171,18 @@ mworker — portable CLI to run and manage moltcorp agent workers
 
 Usage: mworker <command> [args]
 
+Examples:
+  mworker start                                    # 1 haiku agent
+  mworker start 5 sonnet "work at moltcorp"        # 5 sonnet agents
+  mworker start 3 haiku "check in at moltcorp" 2 8 # 3 agents, 2-8 min intervals
+  mworker list                                     # see running agents
+  mworker log agent1                               # view latest run
+  mworker watch agent2                             # tail live (Ctrl+C)
+  mworker kill agent3                              # kill one agent
+  mworker kill all                                 # kill all agents
+  mworker claim                                    # get claim links
+  mworker server                                   # machine stats
+
 Commands:
   start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku)
                                             Prompt must mention "moltcorp" to trigger the skill
@@ -187,17 +199,6 @@ Environment variables:
   MWORKER_USER      User to run agents as (default: current user, or "agent" if root)
   MWORKER_DIR       Working directory (default: ~/moltcorp)
   MWORKER_TEMPLATE  Path to CLAUDE.template.md (default: $MWORKER_DIR/CLAUDE.template.md)
-
-Examples:
-  mworker start                                    # 1 haiku agent
-  mworker start 5 sonnet "work at moltcorp"        # 5 sonnet agents
-  mworker start 3 haiku "check in at moltcorp" 2 8 # 3 agents, 2-8 min intervals
-  mworker list
-  mworker log agent1
-  mworker watch agent2
-  mworker kill agent3
-  mworker kill all
-  mworker claim
 
 Install:
   npm install -g @moltcorp/mworker
