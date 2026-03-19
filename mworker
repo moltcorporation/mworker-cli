@@ -172,19 +172,20 @@ cmd_claim() {
   fi
 }
 
-cmd_server() {
+cmd_machine() {
   if [ "$(uname)" = "Darwin" ]; then
     local cores
     cores=$(sysctl -n hw.ncpu)
     local total_mem
     total_mem=$(sysctl -n hw.memsize)
     local total_gb=$((total_mem / 1073741824))
-    local active wired used_mem used_gb mem_pct
-    active=$(vm_stat | awk '/Pages active/ {gsub(/\./,"",$3); print $3}')
-    wired=$(vm_stat | awk '/Pages wired/ {gsub(/\./,"",$3); print $3}')
-    used_mem=$(( (active + wired) * 4096 ))
-    used_gb=$((used_mem / 1073741824))
-    mem_pct=$((used_mem * 100 / total_mem))
+    local active=0
+    active=$(vm_stat | awk '/Pages active/ {gsub(/\./,"",$3); print $3}') || true
+    local wired=0
+    wired=$(vm_stat | awk '/Pages wired down/ {gsub(/\./,"",$4); print $4}') || true
+    local used_mem=$(( (active + wired) * 4096 ))
+    local used_gb=$((used_mem / 1073741824))
+    local mem_pct=$((used_mem * 100 / total_mem))
   else
     local cores
     cores=$(grep -c ^processor /proc/cpuinfo)
@@ -218,37 +219,28 @@ mworker — portable CLI to run and manage moltcorp agent workers
 
 Usage: mworker <command> [args]
 
-Examples:
-  mworker start                                    # 1 haiku agent
-  mworker start 5 sonnet "work at moltcorp"        # 5 sonnet agents
-  mworker start 3 haiku "check in at moltcorp" 2 8 # 3 agents, 2-8 min intervals
-  mworker list                                     # see running agents
-  mworker log agent1                               # view latest run
-  mworker watch agent2                             # tail live (Ctrl+C)
-  mworker kill agent3                              # kill one agent
-  mworker kill all                                 # kill all agents
-  mworker claim                                    # get claim links
-  mworker server                                   # machine stats
-
 Commands:
-  start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku)
-                                            Prompt must mention "moltcorp" to trigger the skill
+  start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku, 5-10 min)
   list                                      List running agents
   log <agent>                               Show latest run log
   watch <agent>                             Tail log live (Ctrl+C to stop)
   kill <agent|all>                          Kill an agent or all agents
-  claim                                     Show unclaimed agent links from logs
-  server                                    Show machine CPU, memory, disk usage
+  claim                                     Show claim links from logs
+  machine                                    Machine CPU, memory, disk usage
   update                                    Update mworker to latest version
   help                                      Show this help
 
-Environment variables:
-  MWORKER_USER      User to run agents as (default: current user, or "agent" if root)
-  MWORKER_DIR       Working directory (default: ~/moltcorp)
-  MWORKER_TEMPLATE  Path to CLAUDE.template.md (default: $MWORKER_DIR/CLAUDE.template.md)
+Start examples:
+  mworker start                             1 haiku agent, default prompt
+  mworker start 5 sonnet                    5 sonnet agents
+  mworker start 3 haiku "my prompt" 2 8     3 agents, 2-8 min intervals
 
-Install:
-  npm install -g @moltcorp/mworker
+Note: Prompt must mention "moltcorp" to trigger the skill.
+
+Config:
+  MWORKER_USER       User to run as (default: current user, "agent" if root)
+  MWORKER_DIR        Working directory (default: ~/moltcorp)
+  MWORKER_TEMPLATE   CLAUDE.md template path
 EOF
 }
 
@@ -260,7 +252,7 @@ case "${1:-help}" in
   log)     shift; cmd_log "$@" ;;
   kill)    shift; cmd_kill "$@" ;;
   claim)   cmd_claim ;;
-  server)  cmd_server ;;
+  machine)  cmd_machine ;;
   update)  cmd_update ;;
   help|*)  cmd_help ;;
 esac

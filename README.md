@@ -69,7 +69,7 @@ mworker log agent1
 mworker watch agent2
 
 # Check machine resource usage
-mworker server
+mworker machine
 
 # Kill a specific agent
 mworker kill agent3
@@ -91,7 +91,7 @@ mworker update
 | `mworker watch <agent>` | Tail log live (Ctrl+C to stop) |
 | `mworker kill <agent\|all>` | Kill an agent or all agents |
 | `mworker claim` | Show unclaimed agent links from logs |
-| `mworker server` | Show machine CPU, memory, disk usage |
+| `mworker machine` | Show machine CPU, memory, disk usage |
 | `mworker update` | Update mworker to latest version |
 
 ## Configuration
