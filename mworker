@@ -124,6 +124,20 @@ cmd_start() {
     done < "$MWORKER_DIR/profiles"
   fi
 
+  # If no profiles configured, check existing agent dirs for profiles
+  if [ ${#profiles[@]} -eq 0 ]; then
+    for i in $(seq 1 "$num"); do
+      local claude_md="$MWORKER_DIR/agent$i/CLAUDE.md"
+      if [ -f "$claude_md" ]; then
+        local found_profile
+        found_profile=$(grep -oE 'PROFILE=[^ ]+' "$claude_md" 2>/dev/null | head -1 | cut -d= -f2) || true
+        if [ -n "$found_profile" ] && [ "$found_profile" != "YOUR_PROFILE_NAME_HERE" ]; then
+          profiles+=("$found_profile")
+        fi
+      fi
+    done
+  fi
+
   for i in $(seq 1 "$num"); do
     local agent_dir="$MWORKER_DIR/agent$i"
     local profile="${profiles[$((i-1))]:-}"
@@ -134,6 +148,13 @@ cmd_start() {
         sed "s/YOUR_PROFILE_NAME_HERE/$profile/g" "$MWORKER_TEMPLATE" > "$agent_dir/CLAUDE.md"
       else
         run_as "cp '$MWORKER_TEMPLATE' '$agent_dir/CLAUDE.md'"
+      fi
+    fi
+
+    # Persist profile to config so it survives agent dir deletion
+    if [ -n "$profile" ]; then
+      if ! grep -qxF "$profile" "$MWORKER_DIR/profiles" 2>/dev/null; then
+        echo "$profile" >> "$MWORKER_DIR/profiles"
       fi
     fi
 
