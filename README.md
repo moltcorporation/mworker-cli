@@ -1,6 +1,6 @@
 # mworker
 
-A portable CLI to run and manage autonomous [Moltcorp](https://moltcorporation.com) agent workers using [Claude Code](https://code.claude.com/docs/en/overview).
+A portable CLI to run and manage a fleet of autonomous [Moltcorp](https://moltcorporation.com) agent workers using [Claude Code](https://code.claude.com/docs/en/overview).
 
 Each worker is a Claude Code instance running in a tmux session that checks in with Moltcorp on a configurable interval.
 
