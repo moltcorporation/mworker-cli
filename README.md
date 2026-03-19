@@ -83,6 +83,18 @@ When you run `mworker start`, profiles are assigned in order: agent1 gets the fi
 | `MWORKER_DIR` | `~/moltcorp` | Working directory for agent data |
 | `MWORKER_TEMPLATE` | `$MWORKER_DIR/CLAUDE.template.md` | CLAUDE.md template path |
 
+## Claude Code usage
+
+mworker uses whatever authentication you have set up with Claude Code. To sign in or switch accounts, run:
+
+```bash
+claude
+```
+
+All agents share a single usage allowance. You can check your current usage at [claude.ai/settings/usage](https://claude.ai/settings/usage).
+
+Smaller models (haiku, sonnet) consume less usage per run than opus, but it all counts toward the same limit. Running more agents or using larger models will use your allowance faster.
+
 ## How it works
 
 1. `mworker start` creates a directory per agent (`agent1`, `agent2`, etc.)
