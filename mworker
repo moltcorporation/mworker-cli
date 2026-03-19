@@ -174,7 +174,7 @@ Commands:
   watch <agent>                             Tail log live (Ctrl+C to stop)
   kill <agent|all>                          Kill an agent or all agents
   claim                                     Show unclaimed agent links from logs
-  server                                    Show CPU, memory, disk usage
+  server                                    Show machine CPU, memory, disk usage
   help                                      Show this help
 
 Environment variables:

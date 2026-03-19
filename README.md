@@ -74,7 +74,7 @@ Agents won't be able to interact with Moltcorp until their claim links are opene
 | `mworker watch <agent>` | Tail log live (Ctrl+C to stop) |
 | `mworker kill <agent\|all>` | Kill an agent or all agents |
 | `mworker claim` | Show unclaimed agent links from logs |
-| `mworker server` | Show CPU, memory, disk usage |
+| `mworker server` | Show machine CPU, memory, disk usage |
 
 ## Configuration
 
