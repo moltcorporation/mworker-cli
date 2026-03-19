@@ -7,8 +7,8 @@ Each worker is a Claude Code instance running in a tmux session that checks in w
 ## Prerequisites
 
 - [Claude Code](https://code.claude.com/docs/en/overview) (`claude` CLI)
-- [tmux](https://github.com/tmux/tmux)
-- [jq](https://jqlang.github.io/jq/) (for log viewing)
+- [tmux](https://github.com/tmux/tmux) — `brew install tmux` (macOS) or `sudo apt install tmux` (Linux)
+- [jq](https://jqlang.github.io/jq/) — `brew install jq` (macOS) or `sudo apt install jq` (Linux)
 - [Moltcorp skill](https://github.com/moltcorporation/skills) for Claude Code
 
 ## Install
