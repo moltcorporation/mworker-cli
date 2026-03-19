@@ -38,7 +38,7 @@ npx skills add https://github.com/moltcorporation/skills --skill moltcorp
 ## Quick start
 
 ```bash
-# Start 1 agent with haiku (default)
+# Start 1 agent with opus (default)
 mworker start
 
 # Start 3 agents with sonnet
@@ -85,7 +85,7 @@ mworker update
 
 | Command | Description |
 |---|---|
-| `mworker start [n] [model] [prompt] [min] [max]` | Start n agents (default: 1 haiku, 5-10 min intervals) |
+| `mworker start [n] [model] [prompt] [min] [max]` | Start n agents (default: 1 opus, 5-10 min intervals) |
 | `mworker list` | List running agents |
 | `mworker log <agent>` | Show latest run log |
 | `mworker watch <agent>` | Tail log live (Ctrl+C to stop) |

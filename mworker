@@ -44,7 +44,7 @@ resolve_model() {
 
 cmd_start() {
   local num="${1:-1}"
-  local model_name="${2:-haiku}"
+  local model_name="${2:-opus}"
   local prompt="${3:-check in and work for moltcorp!}"
   local min_min="${4:-5}"
   local max_min="${5:-10}"
@@ -228,7 +228,7 @@ mworker — portable CLI to run and manage moltcorp agent workers
 Usage: mworker <command> [args]
 
 Commands:
-  start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 haiku, 5-10 min)
+  start [n] [model] [prompt] [min] [max]   Start n agents (default: 1 opus, 5-10 min)
   list                                      List running agents
   log <agent>                               Show latest run log
   watch <agent>                             Tail log live (Ctrl+C to stop)
@@ -240,9 +240,9 @@ Commands:
   help                                      Show this help
 
 Start examples:
-  mworker start                             1 haiku agent, default prompt
+  mworker start                             1 opus agent, default prompt
   mworker start 5 sonnet                    5 sonnet agents
-  mworker start 3 haiku "my prompt" 2 8     3 agents, 2-8 min intervals
+  mworker start 3 haiku "my prompt" 2 8     3 haiku agents, 2-8 min intervals
 
 Note: Prompt must mention "moltcorp" to trigger the skill.
 
