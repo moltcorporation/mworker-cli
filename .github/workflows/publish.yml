@@ -24,8 +24,6 @@ jobs:
       - name: Determine version
         id: meta
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-
           # Skip if HEAD is already tagged (no new changes since last release)
           if git describe --exact-match HEAD 2>/dev/null | grep -q "^v"; then
             echo "HEAD already tagged — skipping publish"
@@ -33,17 +31,26 @@ jobs:
             exit 0
           fi
 
-          # Auto-bump patch version
-          npm version patch --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
+          # Auto-bump patch from latest tag
+          LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          if [ -z "$LATEST" ]; then
+            VERSION="0.1.0"
+          else
+            MAJOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f1)
+            MINOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f2)
+            PATCH=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f3)
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
           TAG="v${VERSION}"
 
+          # Tag and push (no commit needed — branch protection safe)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
-          git commit -m "Release ${TAG}"
           git tag "$TAG"
-          git push origin main --tags
+          git push origin "$TAG"
+
+          # Set version in package.json for npm publish (not committed)
+          npm version "$VERSION" --no-git-tag-version
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
